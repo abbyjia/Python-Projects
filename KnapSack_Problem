@@ -1,0 +1,102 @@
+def knapSack(C, wt, val): 
+    
+    n = len(val)    
+    V = [[0]*(C+1) for i in range(n+1)]
+    for i in range(n + 1): 
+        for c in range(C + 1): 
+            if i == 0 or c == 0: 
+                V[i][c] = 0
+            elif wt[i - 1] > c:
+                V[i][c] = V[i - 1][c] 
+            else: 
+                V[i][c] = max(val[i - 1] + V[i - 1][c - wt[i - 1]], V[i - 1][c]) 
+
+    # record the maximum value        
+    max_value = V[n][C] 
+    
+    j = n
+    k = C
+    selection_list = [0] * n
+    while j > 0 and k > 0:
+        if V[j][k] != V[j-1][k]:
+            selection_list[j-1] = 1
+            j = j-1
+            k = k - wt[j]
+        else: 
+            j = j-1
+    return [max_value, selection_list]
+
+def read_file():
+    f = open('Knapsack_Instances.csv', 'r')
+    content = f.read().split('\n')
+    w_list = []
+    val_list = []
+
+    for i in range(len(content)):
+        if (i+1) % 3 == 1 and content[i] != '':
+            w_list.append([int(s) for s in content[i].split(',')])
+        elif (i+1) % 3 == 2:
+            val_list.append([float(s) for s in content[i].split(',')])
+    return [w_list, val_list]
+
+def value_of_instance(C_real, C, wt, val):
+    if C <= C_real:
+        return knapSack(C, wt, val)[0]
+    else:
+        return 0
+
+# find optimal capacity for instance i
+
+import numpy as np
+
+def get_optimal_c(i):
+
+    K = 1000
+
+    optimal_cap_for_all_ins = []
+
+    wt = w_list[i]
+    val = val_list[i]
+
+    avg_value_of_given_cap = []
+    random_C = np.random.uniform(100, 150, K)
+    for c in range(100, 121):
+        value_of_given_cap = [value_of_instance(real_c, c, wt, val) for real_c in random_C]
+        avg_value_of_given_cap.append(np.mean(np.array(value_of_given_cap)))
+
+    optimal_cap = 100 + avg_value_of_given_cap.index(max(avg_value_of_given_cap))
+
+    #optimal_cap_for_all_ins.append(optimal_cap)
+    print("Optimal cap: %i for instance %i" % (optimal_cap, i))
+
+    return optimal_cap
+
+
+from multiprocessing import Pool
+import time
+
+if __name__ == '__main__':
+    w_list = read_file()[0]
+    val_list = read_file()[1]
+    
+    t1 = time.time()
+    print("start time: ", time.asctime( time.localtime(time.time()) ))
+
+    i = list(range(len(w_list)))
+    p = Pool(2)
+
+    result_c = p.map(get_optimal_c,i)
+    p.close()
+    p.join()
+
+    print("result of c is: ", result_c)
+    print("total time used: ", time.time() - t1)
+    
+    total_selection_list = []
+
+    for i in range(500):
+        wt = w_list[i]
+        val = val_list[i]
+        total_selection_list.append(knapSack(result_c[i], wt, val)[1])
+
+    print("Total_selection_list:",total_selection_list)
